@@ -11,12 +11,14 @@ from .base import BaseAgent
 class SolanaAuditAgent(BaseAgent):
     """Specialist agent for smart contract security auditing"""
 
-    def __init__(self):
+    def __init__(self, mock_mode: bool = False):
         super().__init__(
             agent_id="solana_audit_agent",
             agent_type="solana_audit"
         )
-        self.client = Anthropic()
+        self.mock_mode = mock_mode
+        if not mock_mode:
+            self.client = Anthropic()
 
         self.tools = [
             {
@@ -57,8 +59,36 @@ class SolanaAuditAgent(BaseAgent):
                 "message": "No contract code provided",
             }
 
-        # Use Claude to analyze contract
-        prompt = f"""Analyze this Solana/Anchor smart contract for security vulnerabilities.
+        # Mock mode or real API
+        if self.mock_mode:
+            analysis = """# Security Audit Report
+
+## Critical Vulnerabilities (2 found)
+
+### 1. Integer Overflow in withdraw()
+**Location:** Line ~14
+**Severity:** CRITICAL
+**Issue:** No overflow check when subtracting amount from balance
+**Risk:** Attacker can cause integer underflow, corrupting vault state
+**Fix:** Use checked_sub() or require balance >= amount
+
+### 2. Missing Access Control
+**Location:** Line ~22
+**Severity:** CRITICAL
+**Issue:** initialize() doesn't validate caller is owner
+**Risk:** Anyone can reset vault ownership
+**Fix:** Add owner_signer check in initialize
+
+## Medium Issues (1 found)
+
+### 3. No Event Logging
+Withdrawals should emit events for tracking
+
+## Risk Score: 8/10 (High Risk - Immediate fixes needed)
+"""
+        else:
+            # Use Claude to analyze contract
+            prompt = f"""Analyze this Solana/Anchor smart contract for security vulnerabilities.
 
 Contract Address: {contract_address}
 Contract Code:
@@ -75,13 +105,13 @@ Identify:
 
 Be specific with line numbers and exploitation scenarios."""
 
-        response = self.client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=2000,
-            messages=[{"role": "user", "content": prompt}],
-        )
+            response = self.client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=2000,
+                messages=[{"role": "user", "content": prompt}],
+            )
 
-        analysis = response.content[0].text if response.content else "No analysis"
+            analysis = response.content[0].text if response.content else "No analysis"
 
         # Write to blackboard
         self.write("audit_findings", {
