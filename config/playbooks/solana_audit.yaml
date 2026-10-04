@@ -1,0 +1,32 @@
+name: "Solana Smart Contract Audit"
+description: "Analyze Anchor program for security vulnerabilities"
+version: "1.0"
+
+agents:
+  - solana_audit_agent
+
+workflow:
+  - name: audit_contract
+    agent: solana_audit_agent
+    task: "Audit smart contract"
+    context_keys:
+      - contract_code
+      - contract_address
+    approval_gate: false
+
+  - name: report_findings
+    task: "Format audit report"
+    context_keys:
+      - audit_findings
+    approval_gate: true
+    description: "Review security findings before sharing"
+
+environment:
+  max_retries: 2
+  timeout: 300
+
+outputs:
+  - name: audit_report
+    source: audit_findings
+  - name: risk_score
+    source: audit_findings

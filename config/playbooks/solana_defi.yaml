@@ -1,0 +1,53 @@
+name: "Solana DeFi Yield Optimization"
+description: "Analyze wallet and recommend yield optimization moves"
+version: "1.0"
+
+agents:
+  - solana_defi_agent
+  - solana_execution_agent
+
+workflow:
+  - name: analyze_positions
+    agent: solana_defi_agent
+    task: "Analyze DeFi positions"
+    action: "analyze"
+    context_keys:
+      - wallet_address
+      - positions
+    approval_gate: false
+
+  - name: review_recommendations
+    task: "Review yield recommendations"
+    context_keys:
+      - defi_analysis
+    approval_gate: true
+    description: "Approve recommended moves before proceeding"
+
+  - name: build_rebalance_plan
+    agent: solana_defi_agent
+    task: "Generate rebalancing plan"
+    action: "rebalance"
+    context_keys:
+      - wallet_address
+      - positions
+    approval_gate: false
+
+  - name: prepare_transactions
+    agent: solana_execution_agent
+    task: "Build transactions"
+    context_keys:
+      - rebalance_plan
+    approval_gate: true
+    description: "Review and approve all transactions before execution"
+
+environment:
+  max_retries: 2
+  timeout: 300
+
+outputs:
+  - name: recommendation
+    source: defi_analysis
+  - name: rebalance_plan
+    source: rebalance_plan
+  - name: pending_txs
+    source: pending_transaction

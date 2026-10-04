@@ -1,0 +1,67 @@
+name: "Solana Intelligence Platform"
+description: "Unified agent swarm for contract security + DeFi optimization"
+version: "1.0"
+
+agents:
+  - solana_audit_agent
+  - solana_defi_agent
+  - solana_execution_agent
+
+workflow:
+  - name: route_task
+    task: "Classify user intent"
+    context_keys:
+      - user_input
+    approval_gate: false
+
+  - name: audit_phase
+    agent: solana_audit_agent
+    task: "Audit smart contract"
+    context_keys:
+      - contract_code
+      - contract_address
+    approval_gate: false
+    when: "task_type == 'audit' OR task_type == 'both'"
+
+  - name: defi_phase
+    agent: solana_defi_agent
+    task: "Analyze DeFi positions"
+    context_keys:
+      - wallet_address
+      - positions
+    action: "analyze"
+    approval_gate: false
+    when: "task_type == 'defi' OR task_type == 'both'"
+
+  - name: cross_analysis
+    task: "Synthesize audit + DeFi insights"
+    context_keys:
+      - audit_findings
+      - defi_analysis
+    approval_gate: false
+    description: "Combine security findings with yield strategy"
+    when: "task_type == 'both'"
+
+  - name: final_approval
+    task: "Review all findings and recommendations"
+    context_keys:
+      - audit_findings
+      - defi_analysis
+      - pending_transaction
+    approval_gate: true
+    description: "Final gate before execution"
+
+environment:
+  max_retries: 2
+  timeout: 600
+  parallel_execution: true
+
+outputs:
+  - name: security_report
+    source: audit_findings
+  - name: yield_recommendation
+    source: defi_analysis
+  - name: execution_plan
+    source: pending_transaction
+  - name: combined_strategy
+    source: cross_analysis
